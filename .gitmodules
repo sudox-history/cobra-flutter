@@ -1,0 +1,3 @@
+[submodule "libcobra"]
+	path = libcobra
+	url = https://github.com/sudox-team/libcobra.git
