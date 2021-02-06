@@ -1,5 +1,4 @@
-#include "fserver.h"
-#include <stdlib.h>
+#include "fserver.hpp"
 #include <cobra.h>
 
 void on_server_connection(cobra_server_t *server, cobra_socket_t *socket) {
@@ -7,7 +6,7 @@ void on_server_connection(cobra_server_t *server, cobra_socket_t *socket) {
     object.type = Dart_CObject_kInt64;
     object.value.as_int64 = (int64_t) socket;
 
-    fserver_data *data = cobra_server_get_data(server);
+    auto *data = static_cast<fserver_data *>(cobra_server_get_data(server));
     data->post_obj_func(data->port, &object);
 }
 
@@ -22,10 +21,11 @@ void on_server_close(cobra_server_t *server, cobra_server_err_t error) {
     result.value.as_array.values = array;
     result.value.as_array.length = 1;
 
-    fserver_data *data = cobra_server_get_data(server);
+    auto *data = static_cast<fserver_data *>(cobra_server_get_data(server));
     data->post_obj_func(data->port, &result);
 }
 
+extern "C"
 cobra_server_t *fserver_bind(
         char *host,
         char *port,
@@ -33,7 +33,7 @@ cobra_server_t *fserver_bind(
         Dart_Port events_port,
         Dart_PostCObject_Type post_obj_func
 ) {
-    fserver_data *data = malloc(sizeof(fserver_data));
+    auto *data = new fserver_data;
     data->post_obj_func = post_obj_func;
     data->port = events_port;
 
@@ -45,11 +45,13 @@ cobra_server_t *fserver_bind(
     return server;
 }
 
+extern "C"
 void fserver_destroy(cobra_server_t *server) {
-    free(cobra_server_get_data(server));
+    delete static_cast<fserver_data *>(cobra_server_get_data(server));
     cobra_server_destroy(server);
 }
 
+extern "C"
 void fserver_close(cobra_server_t *server) {
     cobra_server_close(server);
 }
