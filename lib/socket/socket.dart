@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:ffi';
 import 'dart:isolate';
 import 'dart:typed_data';
@@ -39,6 +40,7 @@ class CobraSocket extends StreamChannelMixin {
   Completer _completer;
   Pointer<Utf8> _hostPointer;
   Pointer<Utf8> _portPointer;
+  Queue<Uint8List> _writeQueue = Queue();
   ReceivePort _eventsPort = ReceivePort();
   StreamController<Uint8List> _writeController = StreamController();
   StreamController<CobraSocketEvent> _readController =
@@ -47,6 +49,8 @@ class CobraSocket extends StreamChannelMixin {
   @protected
   CobraSocket({int pointer = -1}) {
     _eventsPort.listen((data) {
+      print(data);
+
       if (data == null) {
         _readController.add(CobraSocketDrainEvent());
       } else if (data is SendPort) {
@@ -71,6 +75,8 @@ class CobraSocket extends StreamChannelMixin {
           _destroyFunction(_pointer);
           _completer?.completeError(CobraSocketException(data[0]));
         }
+      } else if (data is int) {
+        _writeQueue.removeFirst();
       }
     });
 
@@ -107,6 +113,7 @@ class CobraSocket extends StreamChannelMixin {
 
   void _listenWriteRequests(SendPort data) {
     _writeController.stream.listen((bytes) {
+      _writeQueue.addFirst(bytes);
       data.send([_pointer.address, bytes]);
     });
   }

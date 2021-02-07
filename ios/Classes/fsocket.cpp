@@ -54,23 +54,15 @@ void on_socket_read(cobra_socket_t *socket, uint8_t *data, uint64_t length) {
     post_object_to_port(socket, &object);
 }
 
-void on_socket_drain(cobra_socket_t *socket) {
-    Dart_CObject object;
-    object.type = Dart_CObject_kNull;
-    post_object_to_port(socket, &object);
-}
+void on_socket_write(cobra_socket_t *socket, uint8_t *data, uint64_t length, cobra_socket_err_t error) {
+    if (length == 0) {
+        return;
+    }
 
-void
-on_write_request(Dart_Port port, Dart_CObject *data) {
-    auto *socket = reinterpret_cast<cobra_socket_t *>(data->value.as_array.values[0]->value.as_int64);
-    auto length = data->value.as_array.values[1]->value.as_typed_data.length;
-    auto *bytes = data->value.as_array.values[1]->value.as_typed_data.values;
-    auto result = cobra_socket_write(socket, bytes, length);
-
-    if (result != COBRA_SOCKET_OK) {
+    if (error != COBRA_SOCKET_OK) {
         Dart_CObject resObject;
         resObject.type = Dart_CObject_kInt32;
-        resObject.value.as_int32 = result;
+        resObject.value.as_int32 = error;
 
         Dart_CObject closeObject;
         closeObject.type = Dart_CObject_kBool;
@@ -83,7 +75,28 @@ on_write_request(Dart_Port port, Dart_CObject *data) {
         resultObj.value.as_array.values = array;
 
         post_object_to_port(socket, &resultObj);
+    } else {
+        Dart_CObject object;
+        object.type = Dart_CObject_kInt64;
+        object.value.as_int64 = reinterpret_cast<int64_t>(data);
+
+        post_object_to_port(socket, &object);
     }
+}
+
+void on_socket_drain(cobra_socket_t *socket) {
+    Dart_CObject object;
+    object.type = Dart_CObject_kNull;
+    post_object_to_port(socket, &object);
+}
+
+void
+on_write_request(Dart_Port port, Dart_CObject *data) {
+    auto *socket = reinterpret_cast<cobra_socket_t *>(data->value.as_array.values[0]->value.as_int64);
+    auto length = data->value.as_array.values[1]->value.as_typed_data.length;
+    auto *bytes = data->value.as_array.values[1]->value.as_typed_data.values;
+
+    cobra_socket_write(socket, bytes, length);
 }
 
 extern "C"
@@ -108,7 +121,7 @@ Dart_Port fsocket_prepare(
             on_socket_close,
             on_socket_alloc,
             on_socket_read,
-            nullptr,
+            on_socket_write,
             on_socket_drain
     );
 
