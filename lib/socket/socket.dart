@@ -49,8 +49,6 @@ class CobraSocket extends StreamChannelMixin {
   @protected
   CobraSocket({int pointer = -1}) {
     _eventsPort.listen((data) {
-      print(data);
-
       if (data == null) {
         _readController.add(CobraSocketDrainEvent());
       } else if (data is SendPort) {
