@@ -36,8 +36,11 @@ final _destroyFunction = CobraLoader.cobraLibrary
 );
 
 class CobraSocket extends StreamChannelMixin {
+  static const _defaultConnectTimeout = Duration(seconds: 10);
+
   Pointer _pointer;
   Completer _completer;
+  Timer _connectTimeoutTimer;
   Pointer<Utf8> _hostPointer;
   Pointer<Utf8> _portPointer;
   Queue<Uint8List> _writeQueue = Queue();
@@ -52,6 +55,8 @@ class CobraSocket extends StreamChannelMixin {
       if (data == null) {
         _readController.add(CobraSocketDrainEvent());
       } else if (data is SendPort) {
+        _connectTimeoutTimer.cancel();
+        _connectTimeoutTimer = null;
         _listenWriteRequests(data);
         _completer?.complete(this);
         _completer = null;
@@ -61,6 +66,7 @@ class CobraSocket extends StreamChannelMixin {
         _readController.addError(CobraSocketException(data[0]));
 
         if (data[1]) {
+          _connectTimeoutTimer?.cancel();
           _readController.close();
           _writeController.close();
           _eventsPort.close();
@@ -93,9 +99,10 @@ class CobraSocket extends StreamChannelMixin {
 
   static Future<CobraSocket> connect(
     String host,
-    String port,
-    int writeQueueLength,
-  ) {
+    String port, {
+    int writeQueueLength = 32,
+    Duration connectTimeout = _defaultConnectTimeout,
+  }) {
     var completer = Completer<CobraSocket>();
     var socket = CobraSocket();
 
@@ -103,6 +110,7 @@ class CobraSocket extends StreamChannelMixin {
       host,
       port,
       writeQueueLength,
+      connectTimeout,
       completer,
     );
 
@@ -120,11 +128,16 @@ class CobraSocket extends StreamChannelMixin {
     String host,
     String port,
     int writeQueueLength,
+    Duration connectTimeout,
     Completer<CobraSocket> completer,
   ) {
     _completer = completer;
     _hostPointer = Utf8.toUtf8(host);
     _portPointer = Utf8.toUtf8(port);
+    _connectTimeoutTimer = Timer(connectTimeout, () {
+      sink.close();
+    });
+
     _pointer = _connectFunction(
       _hostPointer,
       _portPointer,
