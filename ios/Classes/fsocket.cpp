@@ -2,7 +2,9 @@
 #include <cobra.h>
 
 void free_buffer(void *_, void *pointer) {
-    delete static_cast<uint8_t *>(pointer);
+    if (pointer != nullptr) {
+        delete static_cast<uint8_t *>(pointer);
+    }
 }
 
 void post_object_to_port(cobra_socket_t *socket, Dart_CObject *object) {
