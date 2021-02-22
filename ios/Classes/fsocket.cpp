@@ -1,10 +1,9 @@
 #include "fsocket.hpp"
 #include <cobra.h>
-#include <cstdlib>
 
 void free_buffer(void *_, void *pointer) {
     if (pointer != nullptr) {
-        free(pointer);
+        delete[] static_cast<uint8_t *>(pointer);
     }
 }
 
