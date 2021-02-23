@@ -1,11 +1,7 @@
 #include "fsocket.hpp"
 #include <cobra.h>
-
-void free_buffer(void *_, void *pointer) {
-    if (pointer != nullptr) {
-        delete[] static_cast<uint8_t *>(pointer);
-    }
-}
+#include <string.h>
+#include <cstdlib>
 
 void post_object_to_port(cobra_socket_t *socket, Dart_CObject *object) {
     auto *data = static_cast<fsocket_data *>(cobra_socket_get_data(socket));
@@ -45,13 +41,15 @@ void on_socket_alloc(cobra_socket_t *socket, uint8_t **data, uint64_t length) {
 }
 
 void on_socket_read(cobra_socket_t *socket, uint8_t *data, uint64_t length) {
+    void *copy = malloc(length);
+    memcpy(copy, data, length);
+    free(data);
+
     Dart_CObject object;
-    object.type = Dart_CObject_kExternalTypedData;
-    object.value.as_external_typed_data.type = Dart_TypedData_kUint8;
-    object.value.as_external_typed_data.length = length;
-    object.value.as_external_typed_data.callback = free_buffer;
-    object.value.as_external_typed_data.peer = data;
-    object.value.as_external_typed_data.data = data;
+    object.type = Dart_CObject_kTypedData;
+    object.value.as_typed_data.type = Dart_TypedData_kUint8;
+    object.value.as_typed_data.length = length;
+    object.value.as_typed_data.values = static_cast<uint8_t *>(copy);
 
     post_object_to_port(socket, &object);
 }
