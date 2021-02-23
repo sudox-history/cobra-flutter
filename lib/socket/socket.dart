@@ -45,13 +45,15 @@ class CobraSocket extends StreamChannelMixin {
   Pointer<Utf8> _portPointer;
   Queue<Uint8List> _writeQueue = Queue();
   ReceivePort _eventsPort = ReceivePort();
+  StreamSubscription _writeSubscription;
+  StreamSubscription _eventsSubscription;
   StreamController<Uint8List> _writeController = StreamController();
   StreamController<CobraSocketEvent> _readController =
       StreamController.broadcast();
 
   @protected
   CobraSocket({int pointer = -1}) {
-    _eventsPort.listen((data) {
+    _eventsSubscription = _eventsPort.listen((data) {
       if (data == null) {
         _readController.add(CobraSocketDrainEvent());
       } else if (data is SendPort) {
@@ -77,6 +79,8 @@ class CobraSocket extends StreamChannelMixin {
           }
 
           _destroyFunction(_pointer);
+          _eventsSubscription.cancel();
+          _writeSubscription.cancel();
           _completer?.completeError(CobraSocketException(data[0]));
         }
       } else if (data is int) {
@@ -118,7 +122,7 @@ class CobraSocket extends StreamChannelMixin {
   }
 
   void _listenWriteRequests(SendPort data) {
-    _writeController.stream.listen((bytes) {
+    _writeSubscription = _writeController.stream.listen((bytes) {
       _writeQueue.addFirst(bytes);
       data.send([_pointer.address, bytes]);
     });

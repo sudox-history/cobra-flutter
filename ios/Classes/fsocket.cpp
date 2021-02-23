@@ -1,6 +1,6 @@
 #include "fsocket.hpp"
 #include <cobra.h>
-#include <string.h>
+#include <cstring>
 #include <cstdlib>
 
 void post_object_to_port(cobra_socket_t *socket, Dart_CObject *object) {
