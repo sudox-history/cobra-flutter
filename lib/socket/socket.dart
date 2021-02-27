@@ -84,6 +84,7 @@ class CobraSocket extends StreamChannelMixin {
           _completer?.completeError(CobraSocketException(data[0]));
         }
       } else if (data is int) {
+        _readController.add(CobraSocketSentEvent());
         _writeQueue.removeFirst();
       }
     });

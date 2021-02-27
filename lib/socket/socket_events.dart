@@ -11,3 +11,5 @@ class CobraSocketDataEvent implements CobraSocketEvent {
 }
 
 class CobraSocketDrainEvent implements CobraSocketEvent {}
+
+class CobraSocketSentEvent implements CobraSocketEvent {}
